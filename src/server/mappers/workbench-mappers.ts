@@ -49,7 +49,7 @@ export function mapInbox(row: InboxRow): InboxItem {
     note: row.note, url: row.url, platform: row.platform as InboxItem["platform"],
     sourceType: row.source_type, captureMethod: row.capture_method as InboxItem["captureMethod"],
     author: row.author, thumbnail: row.thumbnail, aiScore: row.ai_score, status: row.status as InboxItem["status"],
-    tags: row.tags, capturedAt: row.captured_at, metrics: metrics(row.metrics), analysis: analysis(row.analysis),
+    tags: row.tags, capturedAt: row.captured_at, updatedAt: row.updated_at, metrics: metrics(row.metrics), analysis: analysis(row.analysis),
     mode: row.mode as InboxItem["mode"],
   };
 }
@@ -60,7 +60,7 @@ export function mapIntelligence(row: IntelligenceRow): IntelligenceItem {
     note: row.note, url: row.url, platform: row.platform as IntelligenceItem["platform"],
     sourceType: row.source_type, captureMethod: row.capture_method as IntelligenceItem["captureMethod"],
     author: row.author, thumbnail: row.thumbnail, aiScore: row.ai_score, status: row.status as IntelligenceItem["status"],
-    tags: row.tags, capturedAt: row.captured_at, metrics: metrics(row.metrics), analysis: analysis(row.analysis),
+    tags: row.tags, capturedAt: row.captured_at, updatedAt: row.updated_at, metrics: metrics(row.metrics), analysis: analysis(row.analysis),
   };
 }
 

@@ -659,6 +659,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      analyze_source: {
+        Args: { p_source_id: string; p_source_kind: string }
+        Returns: {
+          score: number
+          source_id: string
+        }[]
+      }
       convert_source_to_idea: {
         Args: { p_source_id: string; p_source_kind: string }
         Returns: {

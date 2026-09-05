@@ -12,6 +12,7 @@ test("Repository mappers convert database rows to domain models", () => {
     created_at: "2026-01-01T00:00:00.000Z", updated_at: "2026-01-01T00:00:00.000Z",
   } as Database["public"]["Tables"]["inbox_items"]["Row"]);
   assert.equal(inbox.originalContent, "原文");
+  assert.equal(inbox.updatedAt, "2026-01-01T00:00:00.000Z");
   assert.equal(inbox.analysis?.summary, "分析");
   assert.equal(inbox.metrics.views, 10);
 

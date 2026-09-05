@@ -89,15 +89,23 @@ const contentRows = demoState.content.map((item) => ({
   title: item.title, platform: item.platform, status: item.status, scheduled_at: item.scheduledAt ? new Date(item.scheduledAt).toISOString() : null,
   assignee: item.assignee, metadata: {},
 }));
+const ideaSourceRows = demoState.ideas.flatMap((item) => item.sourceIds.map((source) => ({
+  id: stableId("idea-source:" + item.id + ":" + source.kind + ":" + source.id),
+  workspace_id: workspace.id,
+  idea_id: stableId("idea:" + item.id),
+  source_kind: source.kind,
+  source_id: stableId(source.kind + ":" + source.id),
+})));
 
 await upsert("inbox_items", inboxRows);
 await upsert("intelligence_items", intelligenceRows);
 await upsert("ideas", ideaRows);
+await upsert("idea_sources", ideaSourceRows);
 await upsert("competitors", competitorRows);
 await upsert("competitor_contents", competitorContentRows);
 await upsert("content_items", contentRows);
 console.log("Seeded local demo workspace:", workspace.id);
-console.log("Records: " + inboxRows.length + " inbox, " + intelligenceRows.length + " intelligence, " + ideaRows.length + " ideas, " + competitorRows.length + " competitors, " + contentRows.length + " content.");
+console.log("Records: " + inboxRows.length + " inbox, " + intelligenceRows.length + " intelligence, " + ideaRows.length + " ideas, " + ideaSourceRows.length + " sources, " + competitorRows.length + " competitors, " + contentRows.length + " content.");
 
 async function upsert(table: string, rows: unknown[]) {
   if (!rows.length) return;

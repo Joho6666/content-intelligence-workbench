@@ -348,6 +348,7 @@ declare
   source_tags text[];
   source_score numeric;
   source_summary text;
+  next_idea_order integer;
 begin
   if p_source_kind not in ('inbox', 'intelligence') then
     raise exception using message = 'Invalid source kind', errcode = '22023';
@@ -356,7 +357,8 @@ begin
   from public.workspaces
   where owner_id = (select auth.uid())
   order by created_at
-  limit 1;
+  limit 1
+  for update;
   if v_workspace_id is null then
     raise exception using message = 'Workspace not found', errcode = 'P0002';
   end if;
@@ -384,13 +386,22 @@ begin
   limit 1;
   if existing_idea_id is not null then
     if p_source_kind = 'inbox' then
-      update public.inbox_items set status = '已转选题' where id = p_source_id;
+      update public.inbox_items
+      set status = '已转选题'
+      where id = p_source_id and workspace_id = v_workspace_id;
     else
-      update public.intelligence_items set status = '已转选题' where id = p_source_id;
+      update public.intelligence_items
+      set status = '已转选题'
+      where id = p_source_id and workspace_id = v_workspace_id;
     end if;
     return query select existing_idea_id, false;
     return;
   end if;
+  select coalesce(max(sort_order), -1) + 1
+    into next_idea_order
+  from public.ideas
+  where workspace_id = v_workspace_id
+    and status = '待筛选';
   insert into public.ideas (
     workspace_id, title, angle, priority, platforms, status, tags, score,
     core, audience, cta, title_variants, strategy, metadata, sort_order
@@ -410,17 +421,96 @@ begin
     array[source_title],
     '先在核心平台验证，再扩展为多平台版本。',
     jsonb_build_object('created_from', p_source_kind),
-    0
+    next_idea_order
   )
   returning id into existing_idea_id;
   insert into public.idea_sources (workspace_id, idea_id, source_kind, source_id)
   values (v_workspace_id, existing_idea_id, p_source_kind, p_source_id);
   if p_source_kind = 'inbox' then
-    update public.inbox_items set status = '已转选题' where id = p_source_id;
+    update public.inbox_items
+    set status = '已转选题'
+    where id = p_source_id and workspace_id = v_workspace_id;
   else
-    update public.intelligence_items set status = '已转选题' where id = p_source_id;
+    update public.intelligence_items
+    set status = '已转选题'
+    where id = p_source_id and workspace_id = v_workspace_id;
   end if;
   return query select existing_idea_id, true;
+end;
+$$;
+
+create or replace function public.analyze_source(
+  p_source_kind text,
+  p_source_id uuid
+)
+returns table(source_id uuid, score numeric)
+language plpgsql
+set search_path = public, auth
+as $$
+declare
+  v_workspace_id uuid;
+  v_title text;
+  v_current_status text;
+  v_score numeric;
+  v_result jsonb;
+begin
+  if p_source_kind not in ('inbox', 'intelligence') then
+    raise exception using message = 'Invalid source kind', errcode = '22023';
+  end if;
+
+  select id into v_workspace_id
+  from public.workspaces
+  where owner_id = (select auth.uid())
+  order by created_at
+  limit 1
+  for update;
+  if v_workspace_id is null then
+    raise exception using message = 'Workspace not found', errcode = 'P0002';
+  end if;
+
+  if p_source_kind = 'inbox' then
+    select title, status, coalesce(ai_score, 88)
+      into v_title, v_current_status, v_score
+    from public.inbox_items
+    where id = p_source_id and workspace_id = v_workspace_id
+    for update;
+  else
+    select title, status, coalesce(ai_score, 88)
+      into v_title, v_current_status, v_score
+    from public.intelligence_items
+    where id = p_source_id and workspace_id = v_workspace_id
+    for update;
+  end if;
+  if v_title is null then
+    raise exception using message = 'Source not found', errcode = 'P0002';
+  end if;
+
+  v_result := jsonb_build_object(
+    'summary', '已基于「' || v_title || '」生成模拟分析：提炼主题、受众和可执行的内容切入点。',
+    'core', '把观察到的现象转化为可复用的方法与真实案例。',
+    'reasons', jsonb_build_array('主题与目标受众相关', '具备清晰的实践场景', '适合拆分为系列内容'),
+    'angles', jsonb_build_array('从真实过程复盘', '从结果对比切入', '从常见误区反转')
+  );
+
+  if p_source_kind = 'inbox' then
+    update public.inbox_items
+    set ai_score = v_score,
+        status = case when v_current_status in ('待处理', '待分析') then '高潜' else v_current_status end,
+        analysis = v_result,
+        summary = v_result ->> 'summary'
+    where id = p_source_id and workspace_id = v_workspace_id;
+  else
+    update public.intelligence_items
+    set ai_score = v_score,
+        status = case when v_current_status in ('待处理', '待分析') then '高潜' else v_current_status end,
+        analysis = v_result,
+        summary = v_result ->> 'summary'
+    where id = p_source_id and workspace_id = v_workspace_id;
+  end if;
+
+  insert into public.ai_analyses (workspace_id, source_kind, source_id, model, score, result, created_by)
+  values (v_workspace_id, p_source_kind, p_source_id, 'mock-v1', v_score, v_result, (select auth.uid()));
+  return query select p_source_id, v_score;
 end;
 $$;
 
@@ -436,8 +526,8 @@ as $$
 declare
   v_workspace_id uuid;
   current_status text;
-  before_status text;
-  before_order integer;
+  current_order integer;
+  target_order integer;
   next_order integer;
 begin
   if p_status not in ('待筛选', '候选选题', '待制作', '制作中', '待发布', '已发布') then
@@ -452,26 +542,45 @@ begin
   if v_workspace_id is null then
     raise exception using message = 'Workspace not found', errcode = 'P0002';
   end if;
-  select ideas.status into current_status
+  select ideas.status, ideas.sort_order
+    into current_status, current_order
   from public.ideas
   where ideas.id = p_idea_id and ideas.workspace_id = v_workspace_id
   for update;
   if current_status is null then
     raise exception using message = 'Idea not found', errcode = 'P0002';
   end if;
-  if p_before_id is not null and p_before_id <> p_idea_id then
+
+  if p_before_id = p_idea_id then
+    return query select p_idea_id, current_status, current_order;
+    return;
+  end if;
+
+  update public.ideas
+  set sort_order = ideas.sort_order - 1
+  where ideas.workspace_id = v_workspace_id
+    and ideas.status = current_status
+    and ideas.sort_order > current_order;
+
+  if p_before_id is not null then
     select ideas.status, ideas.sort_order
-      into before_status, before_order
+      into current_status, target_order
     from public.ideas
     where ideas.id = p_before_id and ideas.workspace_id = v_workspace_id
     for update;
-    if before_status is null then
+    if current_status is null then
       raise exception using message = 'Drop target not found', errcode = 'P0002';
     end if;
-    if before_status <> p_status then
+    if current_status <> p_status then
       raise exception using message = 'Drop target status mismatch', errcode = '22023';
     end if;
-    next_order := before_order - 1;
+
+    update public.ideas
+    set sort_order = ideas.sort_order + 1
+    where ideas.workspace_id = v_workspace_id
+      and ideas.status = p_status
+      and ideas.sort_order >= target_order;
+    next_order := target_order;
   else
     select coalesce(max(ideas.sort_order), -1) + 1 into next_order
     from public.ideas
@@ -537,9 +646,11 @@ revoke execute on function public.is_workspace_competitor_content(uuid, uuid) fr
 revoke execute on function public.is_workspace_source(uuid, text, uuid) from public;
 revoke execute on function public.handle_new_user() from public;
 revoke execute on function public.convert_source_to_idea(text, uuid) from public;
+revoke execute on function public.analyze_source(text, uuid) from public;
 revoke execute on function public.move_idea(uuid, text, uuid) from public;
 revoke execute on function public.schedule_content(text, text, timestamptz, text, uuid) from public;
 grant execute on function public.convert_source_to_idea(text, uuid) to authenticated;
+grant execute on function public.analyze_source(text, uuid) to authenticated;
 grant execute on function public.move_idea(uuid, text, uuid) to authenticated;
 grant execute on function public.schedule_content(text, text, timestamptz, text, uuid) to authenticated;
 

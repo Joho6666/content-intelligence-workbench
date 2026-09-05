@@ -89,11 +89,12 @@ export async function listIntelligence(context: AuthContext, query: ListQuery) {
   return pageResult(items, query);
 }
 
-function sortItems<T extends { capturedAt: string; aiScore: number | null }>(items: T[], query: ListQuery) {
+function sortItems<T extends { capturedAt: string; updatedAt?: string; aiScore: number | null }>(items: T[], query: ListQuery) {
   return [...items].sort((a, b) => {
     if (query.sort === "captured_at_asc") return a.capturedAt.localeCompare(b.capturedAt);
     if (query.sort === "score_desc") return (b.aiScore ?? -1) - (a.aiScore ?? -1);
     if (query.sort === "score_asc") return (a.aiScore ?? 101) - (b.aiScore ?? 101);
+    if (query.sort === "updated_at_desc") return (b.updatedAt ?? b.capturedAt).localeCompare(a.updatedAt ?? a.capturedAt);
     return b.capturedAt.localeCompare(a.capturedAt);
   });
 }
@@ -137,33 +138,13 @@ export async function deleteInbox(context: AuthContext, id: string) {
 }
 
 export async function analyzeSource(context: AuthContext, kind: SourceKind, id: string) {
+  const result = await context.client.rpc("analyze_source", { p_source_kind: kind, p_source_id: id });
+  if (result.error) throw mapDatabaseError(result.error);
+  if (!result.data?.[0]) throw new AppError("INTERNAL_ERROR", "分析结果为空。");
   const table = kind === "inbox" ? "inbox_items" : "intelligence_items";
   const source = await getById(context.client, table, id, context.workspace.id);
   if (!source) throw new AppError("NOT_FOUND", "待分析记录不存在。");
-  const result = {
-    summary: "已基于「" + source.title + "」生成模拟分析：提炼主题、受众和可执行的内容切入点。",
-    core: "把观察到的现象转化为可复用的方法与真实案例。",
-    reasons: ["主题与目标受众相关", "具备清晰的实践场景", "适合拆分为系列内容"],
-    angles: ["从真实过程复盘", "从结果对比切入", "从常见误区反转"],
-  };
-  const score = source.ai_score ?? 88;
-  const update = await updateRow(context.client, table, id, context.workspace.id, {
-    ai_score: score,
-    status: source.status === "待处理" || source.status === "待分析" ? "高潜" : source.status,
-    analysis: result as unknown as Json,
-    summary: result.summary,
-  } as never);
-  const audit = await context.client.from("ai_analyses").insert({
-    workspace_id: context.workspace.id,
-    source_kind: kind,
-    source_id: id,
-    model: "mock-v1",
-    score,
-    result: result as unknown as Json,
-    created_by: context.user.id,
-  });
-  if (audit.error) throw mapDatabaseError(audit.error);
-  return kind === "inbox" ? mapInbox(update as never) : mapIntelligence(update as never);
+  return kind === "inbox" ? mapInbox(source as never) : mapIntelligence(source as never);
 }
 
 export async function convertSource(context: AuthContext, kind: SourceKind, id: string) {
@@ -262,7 +243,9 @@ export async function getCompetitor(context: AuthContext, id: string) {
 
 export async function updateCompetitor(context: AuthContext, id: string, input: CompetitorUpdateInput) {
   const row = await updateRow(context.client, "competitors", id, context.workspace.id, input as never);
-  return mapCompetitor(row);
+  const contents = await context.client.from("competitor_contents").select("*").eq("workspace_id", context.workspace.id).eq("competitor_id", id).order("published_at", { ascending: false });
+  if (contents.error) throw mapDatabaseError(contents.error);
+  return mapCompetitor(row, contents.data ?? []);
 }
 
 export async function deleteCompetitor(context: AuthContext, id: string) {
@@ -308,7 +291,7 @@ export async function createIdea(context: AuthContext, input: IdeaCreateInput) {
     materials: input.materials ?? "",
     strategy: input.strategy ?? "",
     metadata: (input.metadata ?? {}) as Json,
-    sort_order: await nextIdeaOrder(context),
+    sort_order: await nextIdeaOrder(context, input.status ?? "待筛选"),
   });
   return mapIdea(row);
 }
@@ -321,8 +304,8 @@ export async function getIdea(context: AuthContext, id: string) {
   return mapIdea(row, sources.data ?? []);
 }
 
-async function nextIdeaOrder(context: AuthContext) {
-  const result = await context.client.from("ideas").select("sort_order").eq("workspace_id", context.workspace.id).order("sort_order", { ascending: false }).limit(1).maybeSingle();
+async function nextIdeaOrder(context: AuthContext, status: string) {
+  const result = await context.client.from("ideas").select("sort_order").eq("workspace_id", context.workspace.id).eq("status", status).order("sort_order", { ascending: false }).limit(1).maybeSingle();
   if (result.error) throw mapDatabaseError(result.error);
   return (result.data?.sort_order ?? -1) + 1;
 }

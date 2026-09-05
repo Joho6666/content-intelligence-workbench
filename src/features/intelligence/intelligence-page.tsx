@@ -278,17 +278,15 @@ export default function IntelligencePage() {
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
     onPaginationChange: setPagination,
+    getRowId: (row) => row.id,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
   });
 
   const selectedRowIds = React.useMemo(() => {
-    return Object.keys(rowSelection).map((idx) => {
-      const row = table.getRowModel().rowsById[idx] || table.getRowModel().rows[Number(idx)];
-      return row?.original?.id;
-    }).filter(Boolean);
-  }, [rowSelection, table]);
+    return Object.keys(rowSelection).filter((id) => rowSelection[id]);
+  }, [rowSelection]);
 
   const handleBatchStatus = (status: RecordStatus) => {
     if (selectedRowIds.length === 0) return;

@@ -12,7 +12,7 @@ export interface IntelligenceItem {
   id: string; title: string; summary: string; originalContent: string; note: string;
   url: string; platform: Platform; sourceType: string; captureMethod: CaptureMethod;
   author: string; thumbnail: string; aiScore: number | null; status: RecordStatus; tags: string[];
-  capturedAt: string; metrics: {views:number; likes:number}; analysis?: Analysis;
+  capturedAt: string; updatedAt?: string; metrics: {views:number; likes:number}; analysis?: Analysis;
 }
 export interface InboxItem extends IntelligenceItem { mode: "链接" | "选中内容" | "我的重点"; }
 export interface Competitor {

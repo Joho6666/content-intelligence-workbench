@@ -18,6 +18,19 @@ export default function Today() {
   const { state } = useWorkbench();
   const insights = state.intelligence.slice(0, 3);
   const inboxPreview = state.inbox.slice(0, 4);
+  const analyzedCount = state.inbox.filter((item) => item.analysis).length + state.intelligence.filter((item) => item.analysis).length;
+  const competitorActivities = state.competitors.flatMap((competitor) => competitor.recentContent.slice(0, 2).map((content) => ({
+    id: content.id,
+    name: competitor.name,
+    title: content.title,
+    avatar: competitor.avatar || competitor.name.slice(0, 1),
+  }))).slice(0, 5);
+  const recommendations = state.intelligence.slice(0, 3).map((item) => ({
+    title: item.title,
+    reason: item.analysis ? "基于已完成的 AI 分析，适合继续拆解" : "来自当前工作区的最新情报",
+    label: item.aiScore !== null && item.aiScore >= 85 ? "高潜力" : "适合你",
+  }));
+  const currentDate = new Intl.DateTimeFormat("zh-CN", { month: "long", day: "numeric", weekday: "long" }).format(new Date());
 
   return (
     <>
@@ -31,7 +44,7 @@ export default function Today() {
         desc="收集灵感，洞察趋势，借助 AI 生成更好的内容。"
         action={
           <div className="date">
-            4月16日　星期二
+            {currentDate}
             <br />
             <span>“优秀的创作者，都善于从日常中发现不寻常。”</span>
           </div>
@@ -46,7 +59,7 @@ export default function Today() {
           value={String(state.inbox.filter((item) => item.status === "待处理").length)}
           delta=""
           color="#f1a535"
-          sub="其中 8 条已 AI 分析"
+          sub={`其中 ${analyzedCount} 条已 AI 分析`}
         />
         <Stat icon={Target} label="候选选题" value={String(state.ideas.length)} delta="" color="#856eea" sub="来自当前工作区" />
         <Stat icon={Zap} label="已发布内容" value={String(state.content.filter((item) => item.status === "已发布").length)} delta="" color="#37b986" sub="当前工作区累计" />
@@ -102,18 +115,18 @@ export default function Today() {
           }
         >
           <div className="activity-list">
-            {["TechFlow", "少数派", "极客公园", "36氪", "Notion 中文"].map((x, i) => (
+            {competitorActivities.length === 0 ? <p className="empty-copy">暂无对手动态</p> : competitorActivities.map((activity, i) => (
               <div
                 className="activity cursor-pointer"
-                key={x}
+                key={activity.id}
                 onClick={() => router.push("/competitors")}
               >
-                <div className={cn("mini-logo", `logo-${i}`)}>{x[0]}</div>
+                <div className={cn("mini-logo", `logo-${i}`)}>{activity.avatar}</div>
                 <div>
-                  <strong>{x}</strong>
-                  <p>{i % 2 ? "发布了视频：新工具上线" : "发布了新文章：AI 时代的工作流"}</p>
+                  <strong>{activity.name}</strong>
+                  <p>{activity.title}</p>
                 </div>
-                <span>{i + 1} 小时前</span>
+                <span>当前工作区</span>
               </div>
             ))}
           </div>
@@ -153,24 +166,14 @@ export default function Today() {
       <Section title="AI 推荐" action={<button type="button" className="link">换一批 ↻</button>} className="recommend">
         <div className="recommend-grid">
           <div className="recommend-list">
-            {[
-              "AI 工具 × 个人知识管理：从混乱到清晰的完整指南",
-              "短视频时代，深度内容还有机会吗？",
-              "独立开发者如何做好内容获客",
-            ].map((x, i) => (
-              <div className="recommend-item" key={x}>
+            {recommendations.length === 0 ? <p className="empty-copy">暂无推荐，先在情报库收集一些内容。</p> : recommendations.map((recommendation, i) => (
+              <div className="recommend-item" key={recommendation.title}>
                 <div className="number">{i + 1}</div>
                 <div>
-                  <strong>{x}</strong>
-                  <p>
-                    {[
-                      "基于你最近收藏的内容，匹配度较高",
-                      "行业话题热度上升，适合抖音 / 视频号",
-                      "符合你关注的产品增长方向",
-                    ][i]}
-                  </p>
+                  <strong>{recommendation.title}</strong>
+                  <p>{recommendation.reason}</p>
                 </div>
-                <Badge tone={i === 0 ? "red" : "purple"}>{i === 0 ? "高潜力" : "适合你"}</Badge>
+                <Badge tone={recommendation.label === "高潜力" ? "red" : "purple"}>{recommendation.label}</Badge>
                 <button
                   type="button"
                   className="outline"

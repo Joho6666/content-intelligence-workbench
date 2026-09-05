@@ -1,11 +1,12 @@
 "use client";
 
 import { createBrowserClient } from "@supabase/ssr";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient, User } from "@supabase/supabase-js";
 import type { Database } from "../../types/database.types";
 import { getSupabaseConfig } from "./config";
 
 let browserClient: SupabaseClient<Database> | null = null;
+let anonymousSessionPromise: Promise<User> | null = null;
 
 export function getSupabaseBrowserClient() {
   const config = getSupabaseConfig();
@@ -17,11 +18,20 @@ export function getSupabaseBrowserClient() {
 export async function ensureAnonymousSession() {
   const client = getSupabaseBrowserClient();
   if (!client) throw new Error("本地 Supabase 尚未配置。");
+  if (anonymousSessionPromise) return anonymousSessionPromise;
 
-  const { data: current } = await client.auth.getUser();
-  if (current.user) return current.user;
+  const task = (async () => {
+    const { data: current } = await client.auth.getUser();
+    if (current.user) return current.user;
 
-  const { data, error } = await client.auth.signInAnonymously();
-  if (error || !data.user) throw new Error(error?.message || "无法创建本地访客会话。");
-  return data.user;
+    const { data, error } = await client.auth.signInAnonymously();
+    if (error || !data.user) throw new Error(error?.message || "无法创建本地访客会话。");
+    return data.user;
+  })();
+  anonymousSessionPromise = task;
+  try {
+    return await task;
+  } finally {
+    if (anonymousSessionPromise === task) anonymousSessionPromise = null;
+  }
 }

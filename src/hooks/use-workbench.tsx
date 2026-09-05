@@ -94,11 +94,19 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
         reduceDispatch({ type: "addInbox", item });
         return item;
       }),
-      updateInbox: (id, input) => execute("updateInbox:" + id, async () => {
-        const item = await patch<InboxItem>("/api/v1/inbox/" + id, serializeInboxPatch(input));
-        reduceDispatch({ type: "updateInbox", id, patch: item });
-        return item;
-      }),
+      updateInbox: (id, input) => {
+        const key = "updateInbox:" + id;
+        if (pending[key]) return Promise.resolve(undefined);
+        const snapshot = state.inbox.find((item) => item.id === id);
+        const optimisticPatch = normalizeInboxPatch(input);
+        const serverPatch = serializeInboxPatch(input);
+        reduceDispatch({ type: "updateInbox", id, patch: optimisticPatch });
+        return execute(key, async () => {
+          const item = await patch<InboxItem>("/api/v1/inbox/" + id, serverPatch);
+          reduceDispatch({ type: "updateInbox", id, patch: item });
+          return item;
+        }, () => snapshot && reduceDispatch({ type: "updateInbox", id, patch: snapshot }));
+      },
       analyzeInbox: (id) => execute("analyzeInbox:" + id, async () => {
         const item = await post<InboxItem>("/api/v1/inbox/" + id + "/analyze", {});
         reduceDispatch({ type: "updateInbox", id, patch: item });
@@ -114,11 +122,19 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
         reduceDispatch({ type: "addIntelligence", item });
         return item;
       }),
-      updateIntelligence: (id, input) => execute("updateIntelligence:" + id, async () => {
-        const item = await patch<IntelligenceItem>("/api/v1/intelligence/" + id, serializeIntelligencePatch(input));
-        reduceDispatch({ type: "updateIntelligence", id, patch: item });
-        return item;
-      }),
+      updateIntelligence: (id, input) => {
+        const key = "updateIntelligence:" + id;
+        if (pending[key]) return Promise.resolve(undefined);
+        const snapshot = state.intelligence.find((item) => item.id === id);
+        const optimisticPatch = normalizeInboxPatch(input) as Partial<IntelligenceItem>;
+        const serverPatch = serializeIntelligencePatch(input);
+        reduceDispatch({ type: "updateIntelligence", id, patch: optimisticPatch });
+        return execute(key, async () => {
+          const item = await patch<IntelligenceItem>("/api/v1/intelligence/" + id, serverPatch);
+          reduceDispatch({ type: "updateIntelligence", id, patch: item });
+          return item;
+        }, () => snapshot && reduceDispatch({ type: "updateIntelligence", id, patch: snapshot }));
+      },
       analyzeIntelligence: (id) => execute("analyzeIntelligence:" + id, async () => {
         const item = await post<IntelligenceItem>("/api/v1/intelligence/" + id + "/analyze", {});
         reduceDispatch({ type: "updateIntelligence", id, patch: item });
@@ -135,11 +151,14 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
         return item;
       }),
       updateCompetitor: (id, input) => {
+        const key = "updateCompetitor:" + id;
+        if (pending[key]) return Promise.resolve(undefined);
         const snapshot = state.competitors.find((item) => item.id === id);
-        const optimisticPatch = normalizeCompetitorPatch(input);
-        reduceDispatch({ type: "updateCompetitor", id, patch: optimisticPatch as Partial<Competitor> });
-        return execute("updateCompetitor:" + id, async () => {
-          const item = await patch<Competitor>("/api/v1/competitors/" + id, optimisticPatch);
+        const optimisticPatch = normalizeCompetitorDomainPatch(input);
+        const serverPatch = serializeCompetitorPatch(input);
+        reduceDispatch({ type: "updateCompetitor", id, patch: optimisticPatch });
+        return execute(key, async () => {
+          const item = await patch<Competitor>("/api/v1/competitors/" + id, serverPatch);
           reduceDispatch({ type: "updateCompetitor", id, patch: item });
           return item;
         }, () => snapshot && reduceDispatch({ type: "updateCompetitor", id, patch: snapshot }));
@@ -155,9 +174,11 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
         return item;
       }),
       moveIdea: (id, status, beforeId) => {
+        const key = "moveIdea:" + id;
+        if (pending[key]) return Promise.resolve(undefined);
         const snapshot = state;
         reduceDispatch({ type: "moveIdea", id, status, beforeId });
-        return execute("moveIdea:" + id, async () => {
+        return execute(key, async () => {
           const item = await post<Idea>("/api/v1/ideas/" + id + "/move", { status, before_id: beforeId ?? null });
           await refresh();
           return item;
@@ -175,7 +196,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
         return item;
       }),
     };
-  }, [execute, refresh, state]);
+  }, [execute, pending, refresh, state]);
 
   const dispatch = useCallback((action: Action) => {
     switch (action.type) {
@@ -262,6 +283,33 @@ function serializeInboxPatch(input: InboxUpdateInput | Partial<InboxItem>) {
   };
 }
 
+function normalizeInboxPatch(input: InboxUpdateInput | Partial<InboxItem>): Partial<InboxItem> {
+  const item = input as Partial<InboxItem> & InboxUpdateInput;
+  return {
+    ...(item.title === undefined ? {} : { title: item.title }),
+    ...(item.summary === undefined ? {} : { summary: item.summary }),
+    ...(item.originalContent === undefined ? {} : { originalContent: item.originalContent }),
+    ...(item.original_content === undefined ? {} : { originalContent: item.original_content }),
+    ...(item.note === undefined ? {} : { note: item.note }),
+    ...(item.url === undefined ? {} : { url: item.url }),
+    ...(item.platform === undefined ? {} : { platform: item.platform }),
+    ...(item.sourceType === undefined ? {} : { sourceType: item.sourceType }),
+    ...(item.source_type === undefined ? {} : { sourceType: item.source_type }),
+    ...(item.captureMethod === undefined ? {} : { captureMethod: item.captureMethod }),
+    ...(item.capture_method === undefined ? {} : { captureMethod: item.capture_method }),
+    ...(item.author === undefined ? {} : { author: item.author }),
+    ...(item.thumbnail === undefined ? {} : { thumbnail: item.thumbnail }),
+    ...(item.aiScore === undefined ? {} : { aiScore: item.aiScore }),
+    ...(item.ai_score === undefined ? {} : { aiScore: item.ai_score }),
+    ...(item.status === undefined ? {} : { status: item.status }),
+    ...(item.tags === undefined ? {} : { tags: item.tags }),
+    ...(item.capturedAt === undefined ? {} : { capturedAt: item.capturedAt }),
+    ...(item.captured_at === undefined ? {} : { capturedAt: item.captured_at }),
+    ...(item.metrics === undefined ? {} : { metrics: item.metrics }),
+    ...(item.mode === undefined ? {} : { mode: item.mode }),
+  };
+}
+
 function serializeIntelligence(input: IntelligenceItem | IntelligenceCreateInput): IntelligenceCreateInput {
   if (!isDomainIntelligence(input)) return input;
   return { title: input.title, summary: input.summary, original_content: input.originalContent, note: input.note, url: input.url, platform: input.platform, source_type: input.sourceType, capture_method: input.captureMethod, author: input.author, thumbnail: input.thumbnail, ai_score: input.aiScore, status: input.status, tags: input.tags, captured_at: input.capturedAt, metrics: input.metrics };
@@ -276,9 +324,15 @@ function serializeCompetitor(input: Competitor | CompetitorCreateInput): Competi
   return { name: input.name, handle: input.handle, platform: input.platform, avatar: input.avatar, description: input.description, followers: input.followers, posts_7d: input.posts7d, avg_views: input.avgViews, avg_engagement: input.avgEngagement, outlier_index: input.outlierIndex, recent_topics: input.recentTopics, monitored: input.monitored, trend: input.trend, hooks: input.hooks, insights: input.insights };
 }
 
-function normalizeCompetitorPatch(input: CompetitorUpdateInput | Partial<Competitor>): CompetitorUpdateInput {
+function serializeCompetitorPatch(input: CompetitorUpdateInput | Partial<Competitor>): CompetitorUpdateInput {
   const item = input as Partial<Competitor> & CompetitorUpdateInput;
   return { ...(item.name === undefined ? {} : { name: item.name }), ...(item.handle === undefined ? {} : { handle: item.handle }), ...(item.platform === undefined ? {} : { platform: item.platform }), ...(item.avatar === undefined ? {} : { avatar: item.avatar }), ...(item.description === undefined ? {} : { description: item.description }), ...(item.followers === undefined ? {} : { followers: item.followers }), ...(item.posts7d === undefined ? {} : { posts_7d: item.posts7d }), ...(item.posts_7d === undefined ? {} : { posts_7d: item.posts_7d }), ...(item.avgViews === undefined ? {} : { avg_views: item.avgViews }), ...(item.avg_views === undefined ? {} : { avg_views: item.avg_views }), ...(item.avgEngagement === undefined ? {} : { avg_engagement: item.avgEngagement }), ...(item.avg_engagement === undefined ? {} : { avg_engagement: item.avg_engagement }), ...(item.outlierIndex === undefined ? {} : { outlier_index: item.outlierIndex }), ...(item.outlier_index === undefined ? {} : { outlier_index: item.outlier_index }), ...(item.recentTopics === undefined ? {} : { recent_topics: item.recentTopics }), ...(item.recent_topics === undefined ? {} : { recent_topics: item.recent_topics }), ...(item.monitored === undefined ? {} : { monitored: item.monitored }), ...(item.trend === undefined ? {} : { trend: item.trend }), ...(item.hooks === undefined ? {} : { hooks: item.hooks }), ...(item.insights === undefined ? {} : { insights: item.insights }) };
+}
+
+function normalizeCompetitorDomainPatch(input: CompetitorUpdateInput | Partial<Competitor>): Partial<Competitor> {
+  const item = input as Partial<Competitor> & CompetitorUpdateInput;
+  return {
+    ...(item.name === undefined ? {} : { name: item.name }), ...(item.handle === undefined ? {} : { handle: item.handle }), ...(item.platform === undefined ? {} : { platform: item.platform }), ...(item.avatar === undefined ? {} : { avatar: item.avatar }), ...(item.description === undefined ? {} : { description: item.description }), ...(item.followers === undefined ? {} : { followers: item.followers }), ...(item.posts7d === undefined ? {} : { posts7d: item.posts7d }), ...(item.posts_7d === undefined ? {} : { posts7d: item.posts_7d }), ...(item.avgViews === undefined ? {} : { avgViews: item.avgViews }), ...(item.avg_views === undefined ? {} : { avgViews: item.avg_views }), ...(item.avgEngagement === undefined ? {} : { avgEngagement: item.avgEngagement }), ...(item.avg_engagement === undefined ? {} : { avgEngagement: item.avg_engagement }), ...(item.outlierIndex === undefined ? {} : { outlierIndex: item.outlierIndex }), ...(item.outlier_index === undefined ? {} : { outlierIndex: item.outlier_index }), ...(item.recentTopics === undefined ? {} : { recentTopics: item.recentTopics }), ...(item.recent_topics === undefined ? {} : { recentTopics: item.recent_topics }), ...(item.monitored === undefined ? {} : { monitored: item.monitored }), ...(item.trend === undefined ? {} : { trend: item.trend }), ...(item.hooks === undefined ? {} : { hooks: item.hooks }), ...(item.insights === undefined ? {} : { insights: item.insights }) };
 }
 
 function serializeIdea(input: Idea | IdeaCreateInput): IdeaCreateInput {

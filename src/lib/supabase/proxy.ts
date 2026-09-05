@@ -3,6 +3,11 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getSupabaseConfig } from "./config";
 
 export async function updateSupabaseSession(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+  if (pathname === "/login" || pathname === "/signup") {
+    return NextResponse.redirect(new URL("/", request.url));
+  }
+
   const config = getSupabaseConfig();
   const response = NextResponse.next({ request });
 
@@ -21,6 +26,10 @@ export async function updateSupabaseSession(request: NextRequest) {
       },
     },
   });
-  await supabase.auth.getUser();
+  try {
+    await supabase.auth.getUser();
+  } catch {
+    return response;
+  }
   return response;
 }

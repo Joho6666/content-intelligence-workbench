@@ -40,6 +40,16 @@ export function WorkspaceOverview({ kind, title, description }: WorkspaceOvervie
   };
 
   const Icon = iconMap[kind] || Settings;
+  const weeklyNew = state.inbox.length + state.intelligence.length + state.ideas.length + state.content.length;
+  const activeContent = state.content.filter((item) => item.status !== "已归档" && item.status !== "已发布").length;
+  const analyzedCount = state.inbox.filter((item) => item.analysis).length + state.intelligence.filter((item) => item.analysis).length;
+  const completedCount = state.content.filter((item) => item.status === "已发布").length + state.ideas.filter((item) => item.status === "已发布").length;
+  const recentActivity = [
+    ...state.inbox.slice(0, 2).map((item) => "收藏了灵感：" + item.title),
+    ...state.intelligence.filter((item) => item.analysis).slice(0, 2).map((item) => "完成了情报分析：" + item.title),
+    ...state.ideas.slice(0, 2).map((item) => "新建了选题：" + item.title),
+    ...state.content.slice(0, 2).map((item) => "创建了内容计划：" + item.title),
+  ].slice(0, 5);
 
   return (
     <>
@@ -64,10 +74,10 @@ export function WorkspaceOverview({ kind, title, description }: WorkspaceOvervie
       />
 
       <div className="stats">
-        <Stat icon={Icon} label="本周新增" value="42" delta="17%" sub="较上周 +6" />
-        <Stat icon={TrendingUp} label="活跃内容" value="128" delta="23%" color="#856eea" sub="持续增长中" />
-        <Stat icon={Sparkles} label="AI 洞察" value="24" delta="12%" color="#f1a535" sub="等待处理" />
-        <Stat icon={Zap} label="已完成" value="18" delta="40%" color="#37b986" sub="本周累计" />
+        <Stat icon={Icon} label="本周新增" value={String(weeklyNew)} delta="" sub="来自当前工作区" />
+        <Stat icon={TrendingUp} label="活跃内容" value={String(activeContent)} delta="" color="#856eea" sub="未归档或发布" />
+        <Stat icon={Sparkles} label="AI 洞察" value={String(analyzedCount)} delta="" color="#f1a535" sub="已完成分析" />
+        <Stat icon={Zap} label="已完成" value={String(completedCount)} delta="" color="#37b986" sub="当前工作区累计" />
       </div>
 
       {kind === "calendar" && (
@@ -159,18 +169,12 @@ export function WorkspaceOverview({ kind, title, description }: WorkspaceOvervie
         </Section>
 
         <Section title="最近动态">
-          <div className="timeline">
-            {[
-              "收藏了一条新链接",
-              "AI 完成了 3 条灵感分析",
-              "新建了选题",
-              "完成内容发布",
-              "添加了 5 条灵感到 Inbox",
-            ].map((x, i) => (
-              <div key={x} className="flex items-start gap-3 py-2.5 border-b border-[#edf0f5]">
+                <div className="timeline">
+            {recentActivity.length === 0 ? <p className="empty-copy">暂无最近动态</p> : recentActivity.map((activity, i) => (
+              <div key={activity} className="flex items-start gap-3 py-2.5 border-b border-[#edf0f5]">
                 <span className={cn("timeline-dot mt-1", `dot-${i}`)} />
                 <div className="flex-1 min-w-0">
-                  <strong className="text-sm text-[#152039]">{x}</strong>
+                  <strong className="text-sm text-[#152039]">{activity}</strong>
                   <p className="text-xs text-[#9aa4b6] m-0 mt-1">
                     {i % 2 ? "AI 时代的个人知识管理指南" : "来自今日工作台的最新活动"}
                   </p>
