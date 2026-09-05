@@ -49,6 +49,8 @@ export default function InboxPage() {
   const [selectedPlatform, setSelectedPlatform] = React.useState("");
   const [selectedStatus, setSelectedStatus] = React.useState("");
   const [selectedMode, setSelectedMode] = React.useState("");
+  const [selectedSource, setSelectedSource] = React.useState("");
+  const [selectedCaptureMethod, setSelectedCaptureMethod] = React.useState("");
   const [selectedTag, setSelectedTag] = React.useState("");
   const [sortBy, setSortBy] = React.useState<"time-desc" | "time-asc" | "score-desc" | "score-asc">("time-desc");
   const [viewMode, setViewMode] = React.useState<"list" | "card">("list");
@@ -128,6 +130,8 @@ export default function InboxPage() {
       if (selectedPlatform && item.platform !== selectedPlatform) return false;
       if (selectedStatus && item.status !== selectedStatus) return false;
       if (selectedMode && item.mode !== selectedMode) return false;
+      if (selectedSource && item.sourceType !== selectedSource) return false;
+      if (selectedCaptureMethod && item.captureMethod !== selectedCaptureMethod) return false;
       if (selectedTag && !item.tags.includes(selectedTag)) return false;
       return true;
     }).sort((a, b) => {
@@ -137,7 +141,12 @@ export default function InboxPage() {
       if (sortBy === "score-asc") return (a.aiScore || 0) - (b.aiScore || 0);
       return 0;
     });
-  }, [state.inbox, search, selectedPlatform, selectedStatus, selectedMode, selectedTag, sortBy]);
+  }, [state.inbox, search, selectedPlatform, selectedStatus, selectedMode, selectedSource, selectedCaptureMethod, selectedTag, sortBy]);
+
+  const availableTags = React.useMemo(
+    () => Array.from(new Set(state.inbox.flatMap((item) => item.tags))).sort((a, b) => a.localeCompare(b, "zh-CN")),
+    [state.inbox]
+  );
 
   const selectedItem = state.inbox.find((x) => x.id === selectedId) || null;
 
@@ -289,6 +298,23 @@ export default function InboxPage() {
             <option value="我的重点">我的重点</option>
           </Select>
 
+          <Select aria-label="来源渠道" value={selectedSource} onChange={(e) => setSelectedSource(e.target.value)} className="w-32">
+            <option value="">来源渠道</option>
+            <option value="手动发现">手动发现</option>
+            <option value="对手监控">对手监控</option>
+            <option value="AI 搜索">AI 搜索</option>
+            <option value="RSS">RSS</option>
+            <option value="自己想到">自己想到</option>
+          </Select>
+
+          <Select aria-label="采集方式" value={selectedCaptureMethod} onChange={(e) => setSelectedCaptureMethod(e.target.value)} className="w-32">
+            <option value="">采集方式</option>
+            <option value="手动收藏">手动收藏</option>
+            <option value="快速添加">快速添加</option>
+            <option value="浏览器插件">浏览器插件</option>
+            <option value="自己想到">自己想到</option>
+          </Select>
+
           <Select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)} className="w-32">
             <option value="">全部状态</option>
             <option value="待处理">待处理</option>
@@ -303,6 +329,13 @@ export default function InboxPage() {
             <option value="">全部平台</option>
             {platforms.map((p) => (
               <option key={p} value={p}>{p}</option>
+            ))}
+          </Select>
+
+          <Select aria-label="标签" value={selectedTag} onChange={(e) => setSelectedTag(e.target.value)} className="w-32">
+            <option value="">全部标签</option>
+            {availableTags.map((tag) => (
+              <option key={tag} value={tag}>{tag}</option>
             ))}
           </Select>
 
@@ -340,9 +373,9 @@ export default function InboxPage() {
           {filteredItems.length === 0 ? (
             <EmptyState
               title="Inbox 中没有匹配的灵感"
-              description={search || selectedStatus || selectedPlatform ? "尝试清空筛选条件查看全部内容。" : "点击右上角「收集灵感」记录你的第一条想法。"}
+              description={search || selectedStatus || selectedPlatform || selectedMode || selectedSource || selectedCaptureMethod || selectedTag ? "尝试清空筛选条件查看全部内容。" : "点击右上角「收集灵感」记录你的第一条想法。"}
             >
-              {(search || selectedStatus || selectedPlatform || selectedMode) && (
+              {(search || selectedStatus || selectedPlatform || selectedMode || selectedSource || selectedCaptureMethod || selectedTag) && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -351,6 +384,8 @@ export default function InboxPage() {
                     setSelectedPlatform("");
                     setSelectedStatus("");
                     setSelectedMode("");
+                    setSelectedSource("");
+                    setSelectedCaptureMethod("");
                     setSelectedTag("");
                   }}
                 >
