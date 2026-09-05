@@ -210,8 +210,32 @@ export default function IdeasKanbanPage() {
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
+        accessibility={{
+          screenReaderInstructions: {
+            draggable: "按空格键开始拖动选题，使用方向键移动，按空格键放下，按 Esc 取消。",
+          },
+          announcements: {
+            onDragStart: ({ active }) => {
+              const idea = state.ideas.find((item) => item.id === String(active.id));
+              return `已拿起选题：${idea?.title || active.id}`;
+            },
+            onDragOver: ({ active, over }) => {
+              const idea = state.ideas.find((item) => item.id === String(active.id));
+              return over ? `选题 ${idea?.title || active.id} 已移动到 ${over.id}` : undefined;
+            },
+            onDragEnd: ({ active, over }) => {
+              const idea = state.ideas.find((item) => item.id === String(active.id));
+              return over ? `选题 ${idea?.title || active.id} 已放置到 ${over.id}` : `选题 ${idea?.title || active.id} 已放置`;
+            },
+            onDragCancel: ({ active }) => {
+              const idea = state.ideas.find((item) => item.id === String(active.id));
+              return `已取消拖动：${idea?.title || active.id}`;
+            },
+          },
+        }}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
+        onDragCancel={() => setActiveIdea(null)}
       >
         <div className="kanban flex items-start gap-3.5 overflow-x-auto pb-4 pt-1 thin-scroll">
           {ideaStatuses.map((status) => (

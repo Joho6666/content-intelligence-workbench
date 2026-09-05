@@ -328,7 +328,7 @@ export default function CompetitorsPage() {
       updatedAt: new Date().toISOString(),
       monitored: true,
       recentContent: [], // Empty: correctly displays empty state without faking data
-      trend: Array.from({ length: 14 }, (_, j) => ({ date: `8/${22 + j}`, views: 12000, baseline: 12000 })),
+      trend: [],
       hooks: [{ label: "待分析", value: 100 }],
       insights: ["新添加的监控账号，尚未产生足够的历史抓取数据。系统将在下个采集周期同步内容。"],
     };
@@ -612,25 +612,31 @@ export default function CompetitorsPage() {
                 <h4 className="text-xs font-semibold text-[#8791a7] uppercase tracking-wider mb-2 flex items-center gap-1.5">
                   <LineChartIcon size={14} className="text-[#3378f6]" /> 近14天播放表现趋势
                 </h4>
-                <div className="h-44 w-full rounded-xl border border-[#edf0f5] bg-[#fbfcfe] p-2 pt-3">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={selectedCompetitor.trend}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#edf0f5" />
-                      <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#9aa4b6" }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fontSize: 10, fill: "#9aa4b6" }} axisLine={false} tickLine={false} />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "#fff",
-                          border: "1px solid #e7ebf2",
-                          borderRadius: "8px",
-                          fontSize: "12px",
-                        }}
-                      />
-                      <Line type="monotone" dataKey="views" name="实际播放" stroke="#3378f6" strokeWidth={2} dot={false} />
-                      <Line type="monotone" dataKey="baseline" name="均线基准" stroke="#cbd5e1" strokeWidth={1.5} strokeDasharray="4 4" dot={false} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
+                {selectedCompetitor.trend.length === 0 ? (
+                  <div className="flex h-44 items-center justify-center rounded-xl border border-dashed border-[#cbd5e1] bg-[#fbfcfe] p-5 text-center text-xs text-[#94a3b8]">
+                    暂无趋势数据，等待下一次采集周期。
+                  </div>
+                ) : (
+                  <div className="h-44 w-full rounded-xl border border-[#edf0f5] bg-[#fbfcfe] p-2 pt-3">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={selectedCompetitor.trend}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#edf0f5" />
+                        <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#9aa4b6" }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fontSize: 10, fill: "#9aa4b6" }} axisLine={false} tickLine={false} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "#fff",
+                            border: "1px solid #e7ebf2",
+                            borderRadius: "8px",
+                            fontSize: "12px",
+                          }}
+                        />
+                        <Line type="monotone" dataKey="views" name="实际播放" stroke="#3378f6" strokeWidth={2} dot={false} />
+                        <Line type="monotone" dataKey="baseline" name="均线基准" stroke="#cbd5e1" strokeWidth={1.5} strokeDasharray="4 4" dot={false} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
               </div>
 
               {/* Recent 3 High-Performing Contents */}

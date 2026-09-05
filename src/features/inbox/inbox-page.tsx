@@ -197,8 +197,8 @@ export default function InboxPage() {
       note: formNote.trim() || "待阅读消化",
       url: formUrl.trim(),
       platform: formPlatform,
-      sourceType: createMode === "链接" ? "手动收藏" : "自己想到",
-      captureMethod: "快速添加",
+      sourceType: createMode === "链接" ? "手动发现" : "自己想到",
+      captureMethod: createMode === "链接" ? "手动收藏" : "自己想到",
       author: createMode === "链接" ? "外部来源" : "我",
       thumbnail: "#dbe7f5",
       aiScore: null,
@@ -211,6 +211,7 @@ export default function InboxPage() {
 
     dispatch({ type: "addInbox", item: newItem });
     toast.success("已成功加入灵感 Inbox！", title);
+    handleRunAnalysis(newItem);
     setShowAddModal(false);
     setFormTitle("");
     setFormUrl("");
