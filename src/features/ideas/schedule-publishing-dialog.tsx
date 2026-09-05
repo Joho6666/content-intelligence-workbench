@@ -22,7 +22,7 @@ function SchedulePublishingForm({
   idea: Idea;
   onClose: () => void;
 }) {
-  const { dispatch } = useWorkbench();
+  const { actions } = useWorkbench();
 
   const [title, setTitle] = React.useState(idea.title);
   const [platform, setPlatform] = React.useState<Platform>(idea.platforms[0] || "小红书");
@@ -34,7 +34,7 @@ function SchedulePublishingForm({
   const [assignee, setAssignee] = React.useState("林小北");
   const [error, setError] = React.useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
@@ -57,8 +57,11 @@ function SchedulePublishingForm({
       assignee: assignee.trim() || "林小北",
     };
 
-    dispatch({ type: "addContent", item: contentItem });
-    dispatch({ type: "editIdea", id: idea.id, patch: { status: "待发布" } });
+    const created = await actions.addContent(contentItem);
+    if (!created) {
+      setError("排期失败，请确认本地 Supabase 正常运行后重试。");
+      return;
+    }
 
     toast.success("已成功加入发布计划！", `${title.trim()} · 计划于 ${scheduledAt.replace("T", " ")} 发布`);
     onClose();

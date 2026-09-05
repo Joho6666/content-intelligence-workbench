@@ -1,0 +1,2 @@
+-- Business demo data is intentionally opt-in.
+-- Run pnpm db:seed after starting Supabase.

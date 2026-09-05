@@ -25,7 +25,7 @@ export function ImportIntelligenceDialog({
   onOpenChange: (open: boolean) => void;
   onSuccess?: (id: string) => void;
 }) {
-  const { dispatch } = useWorkbench();
+  const { actions } = useWorkbench();
   const [title, setTitle] = React.useState("");
   const [content, setContent] = React.useState("");
   const [platform, setPlatform] = React.useState<Platform>("小红书");
@@ -35,7 +35,7 @@ export function ImportIntelligenceDialog({
   const [score, setScore] = React.useState("85");
   const [error, setError] = React.useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
@@ -73,13 +73,17 @@ export function ImportIntelligenceDialog({
       },
     };
 
-    dispatch({ type: "addIntelligence", item: newItem });
+    const created = await actions.addIntelligence(newItem);
+    if (!created) {
+      setError("保存失败，请确认本地 Supabase 正常运行后重试。");
+      return;
+    }
     toast.success("已成功导入情报！", title.trim());
     onOpenChange(false);
     setTitle("");
     setContent("");
     setUrl("");
-    onSuccess?.(newItem.id);
+    onSuccess?.(created.id);
   };
 
   return (

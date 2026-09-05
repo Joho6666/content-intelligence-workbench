@@ -40,7 +40,7 @@ import { KanbanColumn } from "./kanban-column";
 import { KanbanCard } from "./kanban-card";
 
 export default function IdeasKanbanPage() {
-  const { state, dispatch } = useWorkbench();
+  const { state, actions, dispatch } = useWorkbench();
 
   const [activeIdea, setActiveIdea] = React.useState<Idea | null>(null);
 
@@ -120,7 +120,7 @@ export default function IdeasKanbanPage() {
     }
   };
 
-  const handleCreateSubmit = (e: React.FormEvent) => {
+  const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError("");
 
@@ -150,7 +150,11 @@ export default function IdeasKanbanPage() {
       strategy: "首发核心平台验证数据，再多平台矩阵分发。",
     };
 
-    dispatch({ type: "addIdea", item: newIdea });
+    const created = await actions.addIdea(newIdea);
+    if (!created) {
+      setFormError("保存失败，请确认本地 Supabase 正常运行后重试。");
+      return;
+    }
     toast.success("已创建新选题！", formTitle.trim());
     setShowAddModal(false);
     setFormTitle("");

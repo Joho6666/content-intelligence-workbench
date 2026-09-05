@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { reducer, initialState } from "../src/lib/reducer";
+import { reducer } from "../src/lib/reducer";
+import { demoState as initialState } from "../src/data/mock-state";
 import { getOutlierLevel, getOutlierLabel, getOutlierBadgeTone } from "../src/lib/outlier";
 import type { SourceRef, IdeaStatus, RecordStatus } from "../src/types";
 
@@ -159,4 +160,13 @@ test("Outlier Index 异常指数边界规范", async (t) => {
     assert.equal(getOutlierBadgeTone(3.8), "red");
     assert.match(getOutlierLabel(3.8), /异常爆款/);
   });
+});
+
+test("Reducer - hydrate 与 rollback", () => {
+  const hydrated = { ...initialState, inbox: initialState.inbox.slice(0, 1) };
+  const changed = reducer(initialState, { type: "hydrate", state: hydrated });
+  assert.deepEqual(changed, hydrated);
+
+  const rolledBack = reducer(changed, { type: "rollback", state: initialState });
+  assert.deepEqual(rolledBack, initialState);
 });

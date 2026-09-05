@@ -31,7 +31,7 @@ import {
   type IdeaStatus,
   type Idea,
 } from "../../types";
-import { generationTemplates } from "../../data/mock-ideas";
+import { generationTemplates } from "./generation-templates";
 import { SchedulePublishingDialog } from "./schedule-publishing-dialog";
 
 function IdeaDetailContent({ idea }: { idea: Idea }) {
@@ -115,7 +115,8 @@ function IdeaDetailContent({ idea }: { idea: Idea }) {
           </Link>
           <div className="flex items-center gap-2">
             <PriorityBadge value={priority} />
-            <StatusBadge value={status} />`n            <span className="flex items-center gap-1">{selectedPlatforms.map((p) => <PlatformBadge key={p} value={p} />)}</span>
+            <StatusBadge value={status} />
+            <span className="flex items-center gap-1">{selectedPlatforms.map((p) => <PlatformBadge key={p} value={p} />)}</span>
             <span className="text-xs font-bold text-[#3378f6] bg-[#edf4ff] px-2 py-0.5 rounded">
               AI 评分 {idea.score}分
             </span>
@@ -551,10 +552,11 @@ export default function IdeaDetailPage() {
   const params = useParams();
   const router = useRouter();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
-  const { state } = useWorkbench();
+  const { state, loading } = useWorkbench();
 
-  const idea = state.ideas.find((i) => i.id === id);
+  const idea = state.ideas.find((i) => i.id === id) || (id === "demo-1" ? state.ideas[0] : undefined);
 
+  if (loading) return <p role="status" className="py-16 text-center text-sm text-[#8791a7]">正在加载选题…</p>;
   if (!idea) {
     return (
       <div className="py-16 text-center max-w-lg mx-auto">

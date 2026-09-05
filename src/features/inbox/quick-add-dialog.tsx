@@ -19,7 +19,7 @@ function QuickAddForm({
   kind: AddKind;
   onClose: () => void;
 }) {
-  const { dispatch } = useWorkbench();
+  const { actions } = useWorkbench();
 
   // Initialized per kind
   const [title, setTitle] = React.useState("");
@@ -35,7 +35,7 @@ function QuickAddForm({
   const [tags, setTags] = React.useState("AI 工具, 内容创作");
   const [error, setError] = React.useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
@@ -68,7 +68,10 @@ function QuickAddForm({
         metrics: { views: 0, likes: 0 },
         mode: "链接",
       };
-      dispatch({ type: "addInbox", item: newItem });
+      if (!await actions.addInbox(newItem)) {
+        setError("保存失败，请确认本地 Supabase 正常运行后重试。");
+        return;
+      }
       toast.success("链接已成功加入灵感 Inbox！", finalTitle);
       onClose();
     } else if (kind === "记录灵感") {
@@ -96,7 +99,10 @@ function QuickAddForm({
         metrics: { views: 0, likes: 0 },
         mode: "选中内容",
       };
-      dispatch({ type: "addInbox", item: newItem });
+      if (!await actions.addInbox(newItem)) {
+        setError("保存失败，请确认本地 Supabase 正常运行后重试。");
+        return;
+      }
       toast.success("灵感已成功保存至 Inbox！", finalTitle);
       onClose();
     } else if (kind === "添加对手") {
@@ -124,7 +130,10 @@ function QuickAddForm({
         hooks: [{ label: "待分析", value: 100 }],
         insights: ["新添加监控账号，将在下个周期同步内容与表现分析。"],
       };
-      dispatch({ type: "addCompetitor", item: newCompetitor });
+      if (!await actions.addCompetitor(newCompetitor)) {
+        setError("保存失败，请确认本地 Supabase 正常运行后重试。");
+        return;
+      }
       toast.success("已添加对手监控账号！", title.trim());
       onClose();
     } else if (kind === "新建选题") {
@@ -152,7 +161,10 @@ function QuickAddForm({
         materials: "",
         strategy: "首发核心平台验证数据，再多平台矩阵分发。",
       };
-      dispatch({ type: "addIdea", item: newIdea });
+      if (!await actions.addIdea(newIdea)) {
+        setError("保存失败，请确认本地 Supabase 正常运行后重试。");
+        return;
+      }
       toast.success("已创建新选题！", title.trim());
       onClose();
     } else if (kind === "新建内容") {
@@ -168,7 +180,10 @@ function QuickAddForm({
         scheduledAt: scheduledAt || new Date(Date.now() + 86400000).toISOString(),
         assignee: assignee.trim() || "林小北",
       };
-      dispatch({ type: "addContent", item: newContent });
+      if (!await actions.addContent(newContent)) {
+        setError("保存失败，请确认本地 Supabase 正常运行后重试。");
+        return;
+      }
       toast.success("已创建内容计划，已同步至发布日历！", title.trim());
       onClose();
     }

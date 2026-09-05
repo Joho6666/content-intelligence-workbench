@@ -18,24 +18,44 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { content, chart, platform } from "../../data/mock-analytics";
 import { Badge, Stat, PageHead, Section } from "../../components/shared/legacy";
+import { useWorkbench } from "../../hooks/use-workbench";
+import { formatCount, formatDate } from "../../lib/utils";
 
 export default function Analytics() {
+  const { state } = useWorkbench();
+  const totalViews = 0;
+  const recentContent = state.content.slice(0, 10).map((item) => ({
+    title: item.title,
+    platform: item.platform,
+    scheduledAt: item.scheduledAt,
+    score: 0,
+    image: "#dbe7f5",
+  }));
+  const chart = Array.from({ length: 7 }, (_, index) => ({ d: "第 " + (index + 1) + " 天", v: 0 }));
+  const platformCounts = state.content.reduce<Record<string, number>>((counts, item) => {
+    counts[item.platform] = (counts[item.platform] || 0) + 1;
+    return counts;
+  }, {});
+  const platform = Object.entries(platformCounts).map(([name, value], index) => ({
+    name,
+    value,
+    color: ["#3978f6", "#ef5a64", "#8b78e8", "#39b984"][index % 4],
+  }));
   return (
     <>
       <PageHead
         title="内容分析 / 复盘"
         desc="用数据看见内容的真实效果，找到可复制的增长路径。"
-        action={<button type="button" className="filter-date">最近 7 天　⌄　 4月9日 - 4月16日</button>}
+        action={<button type="button" className="filter-date">最近 7 天　⌄　基于当前工作区</button>}
       />
 
       <div className="stats five">
-        <Stat icon={FileText} label="总播放量" value="128.6万" delta="42%" sub="较上周 90.5万" />
-        <Stat icon={Sparkles} label="互动率" value="6.8%" delta="1.9%" color="#ef6a7b" sub="较上周 4.9%" />
-        <Stat icon={Zap} label="转化率" value="2.3%" delta="0.8%" color="#f1a535" sub="较上周 1.5%" />
-        <Stat icon={Flame} label="高表现内容" value="12" delta="71%" color="#856eea" sub="播放 > 10万的内容" />
-        <Stat icon={TrendingUp} label="本周增长" value="+38%" delta="" color="#37b986" sub="较上周播放增长" />
+        <Stat icon={FileText} label="总播放量" value={formatCount(totalViews)} delta="" sub="等待接入表现快照" />
+        <Stat icon={Sparkles} label="互动率" value="—" delta="" color="#ef6a7b" sub="等待接入表现快照" />
+        <Stat icon={Zap} label="转化率" value="—" delta="" color="#f1a535" sub="等待接入表现快照" />
+        <Stat icon={Flame} label="高表现内容" value="0" delta="" color="#856eea" sub="等待接入表现快照" />
+        <Stat icon={TrendingUp} label="本周增长" value="—" delta="" color="#37b986" sub="等待接入表现快照" />
       </div>
 
       <div className="analytics-grid">
@@ -75,7 +95,7 @@ export default function Analytics() {
                 <div className="legend" key={x.name}>
                   <i style={{ background: x.color }} />
                   {x.name}
-                  <b>{x.value}.3%</b>
+                  <b>{state.content.length ? Math.round((x.value / state.content.length) * 100) : 0}%</b>
                 </div>
               ))}
             </div>
@@ -85,10 +105,10 @@ export default function Analytics() {
         <Section title="AI 复盘结论" className="conclusion">
           <Badge tone="blue">本周内容整体表现优秀</Badge>
           <p>
-            播放量较上周提升 38%，互动率提升 1.9 个百分点。知识型内容增长明显，3 条内容播放超过 20 万。
+            当前工作区已有 {state.content.length} 条内容记录；接入表现快照后，这里会展示真实播放、互动与转化趋势。
           </p>
           <h3>本周表现亮点</h3>
-          {["AI 工具类内容播放量占比 42%", "方法论 + 案例，综合表现更好", "晚间 18-22 点发布效果最佳"].map(
+            {["排期记录按平台聚合", "内容状态来自服务端", "表现指标等待快照数据"].map(
             (x, i) => (
               <div className="rank" key={x}>
                 <span>{i + 1}</span>
@@ -113,7 +133,7 @@ export default function Analytics() {
             </tr>
           </thead>
           <tbody>
-            {content.map((x, i) => (
+            {recentContent.map((x) => (
               <tr key={x.title}>
                 <td>
                   <div className="table-content">
@@ -121,11 +141,11 @@ export default function Analytics() {
                     <strong>{x.title}</strong>
                   </div>
                 </td>
-                <td>{x.source}</td>
-                <td>4月16日 10:24</td>
-                <td>{["32.0万", "18.6万", "12.4万", "9.8万"][i]}</td>
-                <td>2.1万</td>
-                <td>326</td>
+                <td>{x.platform}</td>
+                <td>{x.scheduledAt ? formatDate(x.scheduledAt) : "未排期"}</td>
+                <td>—</td>
+                <td>—</td>
+                <td>—</td>
                 <td>
                   <span className="score">{x.score}</span>
                 </td>

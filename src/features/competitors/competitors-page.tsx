@@ -63,7 +63,7 @@ import { formatCount } from "../../lib/utils";
 export default function CompetitorsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { state, dispatch } = useWorkbench();
+  const { state, actions, dispatch } = useWorkbench();
 
   // Search and Filter states
   const [search, setSearch] = React.useState("");
@@ -303,7 +303,7 @@ export default function CompetitorsPage() {
     },
   });
 
-  const handleCreateSubmit = (e: React.FormEvent) => {
+  const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError("");
 
@@ -333,13 +333,17 @@ export default function CompetitorsPage() {
       insights: ["新添加的监控账号，尚未产生足够的历史抓取数据。系统将在下个采集周期同步内容。"],
     };
 
-    dispatch({ type: "addCompetitor", item: newComp });
+    const created = await actions.addCompetitor(newComp);
+    if (!created) {
+      setFormError("保存失败，请确认本地 Supabase 正常运行后重试。");
+      return;
+    }
     toast.success("已添加对手监控账号！", formName.trim());
     setShowAddModal(false);
     setFormName("");
     setFormHandle("");
     setFormDescription("");
-    selectCompetitor(newComp.id);
+    selectCompetitor(created.id);
   };
 
   return (

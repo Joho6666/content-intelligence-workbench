@@ -42,7 +42,7 @@ import { validUrl, formatDate } from "../../lib/utils";
 export default function InboxPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { state, dispatch } = useWorkbench();
+  const { state, actions, dispatch } = useWorkbench();
 
   // Search and Filter states
   const [search, setSearch] = React.useState("");
@@ -86,27 +86,14 @@ export default function InboxPage() {
   const [analyzingIds, setAnalyzingIds] = React.useState<Set<string>>(new Set());
 
   // Handle AI analysis simulation
-  const handleRunAnalysis = (item: InboxItem) => {
+  const handleRunAnalysis = async (item: InboxItem) => {
     if (analyzingIds.has(item.id)) return;
 
     setAnalyzingIds((prev) => new Set(prev).add(item.id));
     toast.info("正在执行 AI 深度分析...", "提炼核心论点与选题角度");
 
-    setTimeout(() => {
-      dispatch({
-        type: "analyze",
-        id: item.id,
-        patch: {
-          aiScore: item.aiScore || 88,
-          status: item.status === "待处理" ? "高潜" : item.status,
-          analysis: {
-            summary: item.originalContent.slice(0, 80) + "……",
-            core: "以真实使用经验切入，验证可复制的方法论框架。",
-            reasons: ["切入角度清晰易引起目标受众共鸣", "具备明确的实操步骤与对比证据", "适合进一步拆解成系列图文或脚本"],
-            angles: ["从痛点切入：为什么大多数人执行受阻", "三步拆解：我是如何把它变成工作流的", "避坑复盘：实施过程中的两个常见误区"],
-          },
-        },
-      });
+    setTimeout(async () => {
+      await actions.analyzeInbox(item.id);
       setAnalyzingIds((prev) => {
         const next = new Set(prev);
         next.delete(item.id);
@@ -158,7 +145,7 @@ export default function InboxPage() {
     );
   }, [selectedItem, state.ideas]);
 
-  const handleCreateSubmit = (e: React.FormEvent) => {
+  const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError("");
 
@@ -209,24 +196,31 @@ export default function InboxPage() {
       mode: createMode,
     };
 
-    dispatch({ type: "addInbox", item: newItem });
+    const created = await actions.addInbox(newItem);
+    if (!created) {
+      setFormError("保存失败，请确认本地 Supabase 正常运行后重试。");
+      return;
+    }
     toast.success("已成功加入灵感 Inbox！", title);
-    handleRunAnalysis(newItem);
+    void handleRunAnalysis(created);
     setShowAddModal(false);
     setFormTitle("");
     setFormUrl("");
     setFormContent("");
     setFormNote("");
-    selectItem(newItem.id);
+    selectItem(created.id);
   };
 
-  const handleConvertToIdea = (item: InboxItem) => {
+  const handleConvertToIdea = async (item: InboxItem) => {
     if (associatedIdea) {
       router.push(`/ideas/${associatedIdea.id}`);
       return;
     }
-    dispatch({ type: "convert", source: { kind: "inbox", id: item.id } });
-    toast.success("已成功将灵感转化为选题！", item.title);
+    const result = await actions.convertInboxToIdea({ kind: "inbox", id: item.id }) as { idea?: { id: string } } | undefined;
+    if (result?.idea?.id) {
+      toast.success("已成功将灵感转化为选题！", item.title);
+      router.push("/ideas/" + result.idea.id);
+    }
   };
 
   return (
