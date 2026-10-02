@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useReducer,
 import { apiRequest, type ApiClientError } from "../lib/api-client";
 import { emptyState, reducer, type Action } from "../lib/reducer";
 import { toast } from "../components/ui/sonner";
-import { ensureAnonymousSession } from "../lib/supabase/client";
+
 import type { Competitor, ContentItem, Idea, InboxItem, IntelligenceItem, SourceRef, WorkbenchState } from "../types";
 import type {
   CompetitorCreateInput, CompetitorUpdateInput, ContentCreateInput, ContentUpdateInput,
@@ -58,7 +58,6 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     setError(null);
     try {
-      await ensureAnonymousSession();
       const nextState = await apiRequest<WorkbenchState>("/api/v1/bootstrap");
       reduceDispatch({ type: "hydrate", state: nextState });
     } catch (requestError) {

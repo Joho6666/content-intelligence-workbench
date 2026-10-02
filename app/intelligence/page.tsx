@@ -1,1 +1,2 @@
-export {default} from '../../src/features/intelligence/intelligence-page';
+import { OperationsPage } from "../../src/features/operations/workbench";
+export default function Page() { return <OperationsPage view="intelligence" />; }
