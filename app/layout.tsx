@@ -1,5 +1,6 @@
 import "./globals.css";
 import "./app.css";
+import "../src/features/operations/operations.css";
 import {Suspense} from "react";
 import {AppShell} from "../src/components/layout/app-shell";
 import type { Metadata } from "next";

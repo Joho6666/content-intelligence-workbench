@@ -1,4 +1,4 @@
-export const platforms = ["小红书", "TikTok", "YouTube", "X", "Bilibili", "微信公众号", "网页", "自己想到"] as const;
+export const platforms = ["抖音", "小红书", "TikTok", "YouTube", "X", "Bilibili", "微信公众号", "网页", "自己想到"] as const;
 export type Platform = typeof platforms[number];
 export const ideaStatuses = ["待筛选","候选选题","待制作","制作中","待发布","已发布"] as const;
 export type IdeaStatus = typeof ideaStatuses[number];

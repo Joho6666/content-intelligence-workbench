@@ -68,11 +68,11 @@ select lives_ok(
   'owner can call atomic conversion RPC'
 );
 select is((select count(*)::integer from public.idea_sources where source_id = '00000000-0000-4000-8000-000000000011'), 1, 'conversion creates one source relation');
-select lives_ok(
+select throws_ok(
   $$select * from public.analyze_source('inbox', '00000000-0000-4000-8000-000000000011')$$,
-  'owner can run atomic mock analysis'
+  '42501', 'permission denied for function analyze_source', 'legacy synthetic analysis RPC is disabled'
 );
-select is((select count(*)::integer from public.ai_analyses where source_id = '00000000-0000-4000-8000-000000000011'), 1, 'analysis writes one audit record');
+select is((select count(*)::integer from public.ai_analyses where source_id = '00000000-0000-4000-8000-000000000011'), 0, 'disabled legacy analysis writes no audit record');
 insert into public.ideas (id, workspace_id, title, status, sort_order)
 select '00000000-0000-4000-8000-000000000031', id, 'Idea one', '待筛选', 1
 from public.workspaces where owner_id = '00000000-0000-4000-8000-000000000001';

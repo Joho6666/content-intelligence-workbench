@@ -1,14 +1,8 @@
-import { requireAuth } from "../../../../../../src/server/auth/context";
-import { convertSource } from "../../../../../../src/server/services/workbench-service";
-import { dataResponse, errorResponse, parseJson } from "../../../../../../src/server/http/response";
-import { emptyBodySchema } from "../../../../../../src/server/validation/schemas";
-import { parseId } from "../../../../../../src/server/http/route-utils";
-
-export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  try {
-    emptyBodySchema.parse(await parseJson(_request));
-    return dataResponse(await convertSource(await requireAuth(), "inbox", parseId((await params).id)));
-  } catch (error) {
-    return errorResponse(error);
-  }
-}
+import { handleOperations } from "../../../../../../src/server/operations/router";
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const GET = handleOperations;
+export const POST = handleOperations;
+export const PATCH = handleOperations;
+export const PUT = handleOperations;
+export const DELETE = handleOperations;
